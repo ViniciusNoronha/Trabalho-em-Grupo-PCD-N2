@@ -122,3 +122,81 @@ public class BibliotecaServer {
                 e.printStackTrace();
             }
         }
+
+        private String listLivros() {
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < livros.size(); i++) {
+                Livro livro = livros.get(i);
+                sb.append("{ \"titulo\": \"").append(livro.getTitulo())
+                        .append("\", \"autor\": \"").append(livro.getAutor())
+                        .append("\", \"genero\": \"").append(livro.getGenero())
+                        .append("\", \"exemplares\": ").append(livro.getExemplares()).append("}");
+                if (i < livros.size() - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("]");
+            return sb.toString();
+        }
+
+        private void handleRent(String data, PrintWriter out) {
+            Livro livro = findLivro(data);
+            if (livro != null && livro.getExemplares() > 0) {
+                livro.setExemplares(livro.getExemplares() - 1);
+                salvarLivros();
+                out.println("Aluguel realizado com sucesso");
+            } else {
+                out.println("Livro indisponível");
+            }
+        }
+
+        private void handleReturn(String data, PrintWriter out) {
+            Livro livro = findLivro(data);
+            if (livro != null) {
+                livro.setExemplares(livro.getExemplares() + 1);
+                salvarLivros();
+                out.println("Devolução realizada com sucesso");
+            } else {
+                out.println("Livro não encontrado");
+            }
+        }
+
+        private void handleAdd(String data, PrintWriter out) {
+            Livro novoLivro = parseLivro(data);
+            livros.add(novoLivro);
+            salvarLivros();
+            out.println("Livro adicionado com sucesso");
+        }
+
+        private Livro findLivro(String titulo) {
+            return livros.stream().filter(l -> l.getTitulo().equalsIgnoreCase(titulo)).findFirst().orElse(null);
+        }
+
+        private Livro parseLivro(String data) {
+            data = data.replace("{", "").replace("}", "").trim();
+            String[] attributes = data.split(",");
+            String titulo = "", autor = "", genero = "";
+            int exemplares = 0;
+            for (String attribute : attributes) {
+                String[] keyValue = attribute.split(":");
+                String key = keyValue[0].trim().replace("\"", "");
+                String value = keyValue[1].trim().replace("\"", "");
+                switch (key) {
+                    case "titulo":
+                        titulo = value;
+                        break;
+                    case "autor":
+                        autor = value;
+                        break;
+                    case "genero":
+                        genero = value;
+                        break;
+                    case "exemplares":
+                        exemplares = Integer.parseInt(value);
+                        break;
+                }
+            }
+            return new Livro(titulo, autor, genero, exemplares);
+        }
+    }
+}
