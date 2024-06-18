@@ -34,6 +34,6 @@ As operações devem ser realizadas por um cliente socket, que também deve ser 
 ### Arquivo de Armazenamento dos Livros
 - livros.json
 
-### Biblioteca Usada
+### Biblioteca Usada e link
 - Direct JAR Gson 2.8.9 JAR
-
+- https://mvnrepository.com/artifact/com.google.code.gson/gson/2.8.9
