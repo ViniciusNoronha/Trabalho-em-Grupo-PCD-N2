@@ -28,3 +28,6 @@ As operações devem ser realizadas por um cliente socket, que também deve ser 
 
 ### Arquivo de Armazenamento dos Livros
 - livros.json
+
+### Biblioteca Usada
+- Direct JAR Download: Gson 2.8.9 JAR
