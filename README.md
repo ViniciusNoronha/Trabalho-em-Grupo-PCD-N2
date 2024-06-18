@@ -30,4 +30,4 @@ As operações devem ser realizadas por um cliente socket, que também deve ser 
 - livros.json
 
 ### Biblioteca Usada
-- Direct JAR Download: Gson 2.8.9 JAR
+- Direct JAR Gson 2.8.9 JAR
