@@ -1,20 +1,28 @@
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonObject;
+
+
 import java.io.*;
-import java.net.*;
+import java.lang.reflect.Type;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BibliotecaServer {
-    private static List<Livro> livros = new ArrayList<>();
-    private static final String FILENAME = "C:\\Users\\guide\\OneDrive\\Documentos\\Servidor\\livros.json";
+    private static final int PORT = 12310;
+    private static List<Livro> livros;
 
     public static void main(String[] args) {
         carregarLivros();
-        try (ServerSocket serverSocket = new ServerSocket(12341)) {
-            System.out.println("Servidor iniciado na porta 12341");
+
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("Servidor iniciado na porta " + PORT);
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                new ClientHandler(socket).start();
+                new Thread(new ClienteHandler(socket)).start();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -22,106 +30,59 @@ public class BibliotecaServer {
     }
 
     private static void carregarLivros() {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(FILENAME), "UTF-8"))) {
-            StringBuilder json = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                json.append(line);
-            }
-            parseJson(json.toString());
-            System.out.println("Livros carregados: " + livros);
+        try (Reader reader = new FileReader("src/livros.json")) {
+            // Ajuste para ler o objeto raiz "livros"
+            JsonObject jsonObject = new Gson().fromJson(reader, JsonObject.class);
+            Type listType = new TypeToken<ArrayList<Livro>>() {}.getType();
+            livros = new Gson().fromJson(jsonObject.get("livros"), listType);
         } catch (IOException e) {
             e.printStackTrace();
-        }
-    }
-
-    private static void parseJson(String jsonString) {
-        livros.clear();
-        jsonString = jsonString.trim().substring(11, jsonString.length() - 2); // Remove o início e fim do JSON
-        String[] livroStrings = jsonString.split("},\\s*\\{");
-
-        for (String livroString : livroStrings) {
-            livroString = livroString.replace("{", "").replace("}", "").trim();
-            String[] attributes = livroString.split("\",\\s*\"");
-            String titulo = "", autor = "", genero = "";
-            int exemplares = 0;
-
-            for (String attribute : attributes) {
-                String[] keyValue = attribute.split("\":\\s*\"");
-                if (keyValue.length == 2) {
-                    String key = keyValue[0].replace("\"", "").trim();
-                    String value = keyValue[1].replace("\"", "").trim();
-
-                    switch (key) {
-                        case "titulo":
-                            titulo = value;
-                            break;
-                        case "autor":
-                            autor = value;
-                            break;
-                        case "genero":
-                            genero = value;
-                            break;
-                        case "exemplares":
-                            exemplares = Integer.parseInt(value);
-                            break;
-                    }
-                }
-            }
-            livros.add(new Livro(titulo, autor, genero, exemplares));
         }
     }
 
     private static void salvarLivros() {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(FILENAME), "UTF-8"))) {
-            writer.write("{ \"livros\": [");
-            for (int i = 0; i < livros.size(); i++) {
-                Livro livro = livros.get(i);
-                writer.write("{ \"titulo\": \"" + livro.getTitulo() + "\", \"autor\": \"" + livro.getAutor() + "\", \"genero\": \"" + livro.getGenero() + "\", \"exemplares\": " + livro.getExemplares() + "}");
-                if (i < livros.size() - 1) {
-                    writer.write(", ");
-                }
-            }
-            writer.write("] }");
+        try (Writer writer = new FileWriter("src/livros.json")) {
+            JsonObject jsonObject = new JsonObject();
+            jsonObject.add("livros", new Gson().toJsonTree(livros));
+            new Gson().toJson(jsonObject, writer);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    static class ClientHandler extends Thread {
-        private Socket socket;
+    private static class ClienteHandler implements Runnable {
+        private final Socket socket;
 
-        public ClientHandler(Socket socket) {
+        ClienteHandler(Socket socket) {
             this.socket = socket;
         }
 
         @Override
         public void run() {
-            try (
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true)
-            ) {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+
                 String request;
                 while ((request = in.readLine()) != null) {
-                    String[] parts = request.split(":", 2);
+                    String[] parts = request.split(" ", 2);
                     String command = parts[0];
-                    String data = parts.length > 1 ? parts[1] : "";
+                    String data = parts.length > 1 ? parts[1] : null;
 
                     switch (command) {
                         case "LIST":
-                            out.println(listLivros());
+                            out.println(new Gson().toJson(livros));
                             break;
-                        case "RENT":
-                            handleRent(data, out);
+                        case "BORROW":
+                            processBorrow(data, out);
                             break;
                         case "RETURN":
-                            handleReturn(data, out);
+                            processReturn(data, out);
                             break;
                         case "ADD":
-                            handleAdd(data, out);
+                            processAdd(data, out);
                             break;
                         default:
-                            out.println("Comando inválido");
+                            out.println("Comando desconhecido: " + command);
                     }
                 }
             } catch (IOException e) {
@@ -129,86 +90,35 @@ public class BibliotecaServer {
             }
         }
 
-        private String listLivros() {
-            StringBuilder sb = new StringBuilder("[");
-            for (int i = 0; i < livros.size(); i++) {
-                Livro livro = livros.get(i);
-                sb.append("{ \"titulo\": \"").append(livro.getTitulo())
-                        .append("\", \"autor\": \"").append(livro.getAutor())
-                        .append("\", \"genero\": \"").append(livro.getGenero())
-                        .append("\", \"exemplares\": ").append(livro.getExemplares()).append("}");
-                if (i < livros.size() - 1) {
-                    sb.append(", ");
+        private void processBorrow(String titulo, PrintWriter out) {
+            for (Livro livro : livros) {
+                if (livro.getTitulo().equalsIgnoreCase(titulo) && livro.getExemplares() > 0) {
+                    livro.setExemplares(livro.getExemplares() - 1);
+                    salvarLivros();
+                    out.println("Livro alugado com sucesso!");
+                    return;
                 }
             }
-            sb.append("]");
-            return sb.toString();
+            out.println("Livro não disponível para aluguel.");
         }
 
-        private void handleRent(String data, PrintWriter out) {
-            Livro livro = findLivro(data);
-            if (livro != null && livro.getExemplares() > 0) {
-                System.out.println("Alugando livro: " + livro);
-                livro.setExemplares(livro.getExemplares() - 1);
-                salvarLivros();
-                out.println("Aluguel realizado com sucesso");
-            } else {
-                System.out.println("Livro indisponível ou não encontrado: " + data);
-                out.println("Livro indisponível");
+        private void processReturn(String titulo, PrintWriter out) {
+            for (Livro livro : livros) {
+                if (livro.getTitulo().equalsIgnoreCase(titulo)) {
+                    livro.setExemplares(livro.getExemplares() + 1);
+                    salvarLivros();
+                    out.println("Livro devolvido com sucesso!");
+                    return;
+                }
             }
+            out.println("Livro não encontrado para devolução.");
         }
 
-        private void handleReturn(String data, PrintWriter out) {
-            Livro livro = findLivro(data);
-            if (livro != null) {
-                livro.setExemplares(livro.getExemplares() + 1);
-                salvarLivros();
-                out.println("Devolução realizada com sucesso");
-            } else {
-                out.println("Livro não encontrado");
-            }
-        }
-
-        private void handleAdd(String data, PrintWriter out) {
-            Livro novoLivro = parseLivro(data);
+        private void processAdd(String data, PrintWriter out) {
+            Livro novoLivro = new Gson().fromJson(data, Livro.class);
             livros.add(novoLivro);
             salvarLivros();
-            out.println("Livro adicionado com sucesso");
-        }
-
-        private Livro findLivro(String titulo) {
-            return livros.stream().filter(l -> l.getTitulo().equalsIgnoreCase(titulo)).findFirst().orElse(null);
-        }
-
-        private Livro parseLivro(String data) {
-            data = data.replace("{", "").replace("}", "").trim();
-            String[] attributes = data.split(",\\s*\"");
-            String titulo = "", autor = "", genero = "";
-            int exemplares = 0;
-
-            for (String attribute : attributes) {
-                String[] keyValue = attribute.split("\":\\s*\"");
-                if (keyValue.length == 2) {
-                    String key = keyValue[0].replace("\"", "").trim();
-                    String value = keyValue[1].replace("\"", "").trim();
-
-                    switch (key) {
-                        case "titulo":
-                            titulo = value;
-                            break;
-                        case "autor":
-                            autor = value;
-                            break;
-                        case "genero":
-                            genero = value;
-                            break;
-                        case "exemplares":
-                            exemplares = Integer.parseInt(value);
-                            break;
-                    }
-                }
-            }
-            return new Livro(titulo, autor, genero, exemplares);
+            out.println("Livro adicionado com sucesso!");
         }
     }
 }
