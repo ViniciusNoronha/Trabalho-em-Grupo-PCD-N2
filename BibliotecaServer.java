@@ -1,3 +1,5 @@
+
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.JsonObject;
@@ -11,18 +13,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BibliotecaServer {
-    private static final int PORT = 12310;
+    private static final int PORT = 12123;
     private static List<Livro> livros;
 
     public static void main(String[] args) {
         carregarLivros();
 
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+        try (ServerSocket serverSkt = new ServerSocket(PORT)) {
             System.out.println("Servidor iniciado na porta " + PORT);
 
             while (true) {
-                Socket socket = serverSocket.accept();
-                new Thread(new ClienteHandler(socket)).start();
+                Socket skt = serverSkt.accept();
+                new Thread(new ClienteHandler(skt)).start();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -51,24 +53,24 @@ public class BibliotecaServer {
     }
 
     private static class ClienteHandler implements Runnable {
-        private final Socket socket;
+        private final Socket skt;
 
         ClienteHandler(Socket socket) {
-            this.socket = socket;
+            this.skt = socket;
         }
 
         @Override
         public void run() {
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(skt.getInputStream()));
+                 PrintWriter out = new PrintWriter(skt.getOutputStream(), true)) {
 
                 String request;
                 while ((request = in.readLine()) != null) {
                     String[] parts = request.split(" ", 2);
-                    String command = parts[0];
+                    String cmd = parts[0];
                     String data = parts.length > 1 ? parts[1] : null;
 
-                    switch (command) {
+                    switch (cmd) {
                         case "LIST":
                             out.println(new Gson().toJson(livros));
                             break;
@@ -82,7 +84,7 @@ public class BibliotecaServer {
                             processAdd(data, out);
                             break;
                         default:
-                            out.println("Comando desconhecido: " + command);
+                            out.println("Comando desconhecido: " + cmd);
                     }
                 }
             } catch (IOException e) {
