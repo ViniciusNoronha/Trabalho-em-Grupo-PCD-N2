@@ -5,12 +5,12 @@ import java.util.List;
 
 public class BibliotecaServer {
     private static List<Livro> livros = new ArrayList<>();
-    private static final String FILENAME = "livros.json";
+    private static final String FILENAME = "C:\\Users\\guide\\OneDrive\\Documentos\\Servidor\\livros.json";
 
     public static void main(String[] args) {
         carregarLivros();
-        try (ServerSocket serverSocket = new ServerSocket(12345)) {
-            System.out.println("Servidor iniciado na porta 12345");
+        try (ServerSocket serverSocket = new ServerSocket(12341)) {
+            System.out.println("Servidor iniciado na porta 12341");
 
             while (true) {
                 Socket socket = serverSocket.accept();
@@ -29,6 +29,7 @@ public class BibliotecaServer {
                 json.append(line);
             }
             parseJson(json.toString());
+            System.out.println("Livros carregados: " + livros);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -36,30 +37,35 @@ public class BibliotecaServer {
 
     private static void parseJson(String jsonString) {
         livros.clear();
-        jsonString = jsonString.trim().replace("{ \"livros\": [", "").replace("]}", "").trim();
-        String[] livroStrings = jsonString.split("}, \\{");
+        jsonString = jsonString.trim().substring(11, jsonString.length() - 2); // Remove o início e fim do JSON
+        String[] livroStrings = jsonString.split("},\\s*\\{");
+
         for (String livroString : livroStrings) {
             livroString = livroString.replace("{", "").replace("}", "").trim();
-            String[] attributes = livroString.split(",");
+            String[] attributes = livroString.split("\",\\s*\"");
             String titulo = "", autor = "", genero = "";
             int exemplares = 0;
+
             for (String attribute : attributes) {
-                String[] keyValue = attribute.split(":");
-                String key = keyValue[0].trim().replace("\"", "");
-                String value = keyValue[1].trim().replace("\"", "");
-                switch (key) {
-                    case "titulo":
-                        titulo = value;
-                        break;
-                    case "autor":
-                        autor = value;
-                        break;
-                    case "genero":
-                        genero = value;
-                        break;
-                    case "exemplares":
-                        exemplares = Integer.parseInt(value);
-                        break;
+                String[] keyValue = attribute.split("\":\\s*\"");
+                if (keyValue.length == 2) {
+                    String key = keyValue[0].replace("\"", "").trim();
+                    String value = keyValue[1].replace("\"", "").trim();
+
+                    switch (key) {
+                        case "titulo":
+                            titulo = value;
+                            break;
+                        case "autor":
+                            autor = value;
+                            break;
+                        case "genero":
+                            genero = value;
+                            break;
+                        case "exemplares":
+                            exemplares = Integer.parseInt(value);
+                            break;
+                    }
                 }
             }
             livros.add(new Livro(titulo, autor, genero, exemplares));
@@ -142,10 +148,12 @@ public class BibliotecaServer {
         private void handleRent(String data, PrintWriter out) {
             Livro livro = findLivro(data);
             if (livro != null && livro.getExemplares() > 0) {
+                System.out.println("Alugando livro: " + livro);
                 livro.setExemplares(livro.getExemplares() - 1);
                 salvarLivros();
                 out.println("Aluguel realizado com sucesso");
             } else {
+                System.out.println("Livro indisponível ou não encontrado: " + data);
                 out.println("Livro indisponível");
             }
         }
@@ -174,26 +182,30 @@ public class BibliotecaServer {
 
         private Livro parseLivro(String data) {
             data = data.replace("{", "").replace("}", "").trim();
-            String[] attributes = data.split(",");
+            String[] attributes = data.split(",\\s*\"");
             String titulo = "", autor = "", genero = "";
             int exemplares = 0;
+
             for (String attribute : attributes) {
-                String[] keyValue = attribute.split(":");
-                String key = keyValue[0].trim().replace("\"", "");
-                String value = keyValue[1].trim().replace("\"", "");
-                switch (key) {
-                    case "titulo":
-                        titulo = value;
-                        break;
-                    case "autor":
-                        autor = value;
-                        break;
-                    case "genero":
-                        genero = value;
-                        break;
-                    case "exemplares":
-                        exemplares = Integer.parseInt(value);
-                        break;
+                String[] keyValue = attribute.split("\":\\s*\"");
+                if (keyValue.length == 2) {
+                    String key = keyValue[0].replace("\"", "").trim();
+                    String value = keyValue[1].replace("\"", "").trim();
+
+                    switch (key) {
+                        case "titulo":
+                            titulo = value;
+                            break;
+                        case "autor":
+                            autor = value;
+                            break;
+                        case "genero":
+                            genero = value;
+                            break;
+                        case "exemplares":
+                            exemplares = Integer.parseInt(value);
+                            break;
+                    }
                 }
             }
             return new Livro(titulo, autor, genero, exemplares);
