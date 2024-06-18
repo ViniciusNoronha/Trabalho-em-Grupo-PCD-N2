@@ -1,5 +1,3 @@
-
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -8,38 +6,38 @@ import java.util.Scanner;
 
 public class BibliotecaClient {
     private static final String HOST = "localhost";
-    private static final int PORT = 12124;
+    private static final int PORT = 12129;
 
     public static void main(String[] args) {
-        try (Socket skt = new Socket(HOST, PORT);
-             BufferedReader in = new BufferedReader(new InputStreamReader(skt.getInputStream()));
-             PrintWriter out = new PrintWriter(skt.getOutputStream(), true);
-             Scanner sc = new Scanner(System.in)) {
+        try (Socket socket = new Socket(HOST, PORT);
+             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+             Scanner scanner = new Scanner(System.in)) {
 
-            String cmd;
+            String command;
             while (true) {
                 System.out.println("Digite um comando (LIST, BORROW, RETURN, ADD, QUIT):");
-                cmd = sc.nextLine();
+                command = scanner.nextLine();
 
-                if (cmd.equalsIgnoreCase("QUIT")) {
+                if (command.equalsIgnoreCase("QUIT")) {
                     break;
                 }
 
-                if (cmd.startsWith("BORROW") || cmd.startsWith("RETURN")) {
+                if (command.startsWith("BORROW") || command.startsWith("RETURN")) {
                     System.out.println("Digite o título do livro:");
-                    String titulo = sc.nextLine();
-                    out.println(cmd + " " + titulo);
-                } else if (cmd.startsWith("ADD")) {
+                    String titulo = scanner.nextLine();
+                    out.println(command + " " + titulo);
+                } else if (command.startsWith("ADD")) {
                     System.out.println("Digite os dados do livro em formato JSON:");
-                    String data = sc.nextLine();
-                    out.println(cmd + " " + data);
+                    String data = scanner.nextLine();
+                    out.println(command + " " + data);
                 } else {
-                    out.println(cmd);
+                    out.println(command);
                 }
 
-                String resp;
-                while ((resp = in.readLine()) != null) {
-                    System.out.println(resp);
+                String response;
+                while ((response = in.readLine()) != null) {
+                    System.out.println(response);
                     if (!in.ready()) break;
                 }
             }
