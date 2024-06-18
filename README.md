@@ -31,3 +31,4 @@ As operações devem ser realizadas por um cliente socket, que também deve ser 
 
 ### Biblioteca Usada
 - Direct JAR Gson 2.8.9 JAR
+- Maven Repository: json-20210307.jar
