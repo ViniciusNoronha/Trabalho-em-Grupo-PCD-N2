@@ -35,6 +35,6 @@ As operações devem ser realizadas por um cliente socket, que também deve ser 
 - livros.json
 
 ### Bibliotecaa Usadas e link
-- Direct JAR Gson 2.8.9 JAR
+- Direct JAR Gson 2.8.9 JAR e JSON in Java
 - https://mvnrepository.com/artifact/com.google.code.gson/gson/2.8.9
 - https://mvnrepository.com/artifact/org.json/json/20210307
